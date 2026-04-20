@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heap Sort</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #eef3fb;
+    margin: 0;
+    padding: 30px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .container {
+    width: 1000px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    padding: 20px;
+  }
+
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 20px;
+  }
+
+  .inputs {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  input[type="number"] {
+    padding: 6px;
+    width: 80px;
+    margin: 4px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    text-align: center;
+  }
+
+  .btn {
+    background-color: #3498db;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    margin: 4px;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    background-color: #2980b9;
+  }
+
+  #treeArea {
+    margin: 20px 0;
+    text-align: center;
+  }
+
+  .tree-level {
+    margin: 12px 0;
+  }
+
+  .level-label {
+    font-weight: bold;
+    color: #34495e;
+    margin-bottom: 4px;
+  }
+
+  .node {
+    background: #27ae60;
+    color: white;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px;
+    transition: all 0.4s;
+    font-weight: bold;
+  }
+
+  .swap { background: #e74c3c !important; transform: scale(1.15); }
+  .compare { background: #f39c12 !important; transform: scale(1.1); }
+  .sorted { background: #2980b9 !important; }
+
+  #explanation {
+    text-align: center;
+    font-size: 16px;
+    background: #eaf5ff;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 15px;
+    color: #2c3e50;
+    min-height: 40px;
+  }
+
+  .controls {
+    text-align: center;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Heap Sort - Level-wise Tree Visualization</h1>
+
+  <div class="inputs">
+    <label>Count:</label>
+    <input id="count" type="number" min="1" placeholder="e.g. 7">
+    <button class="btn" id="goBtn">Go</button>
+    <div id="inputsBox"></div>
+    <button class="btn" id="animateBtn" style="display:none;">Animate HeapSort</button>
+  </div>
+
+  <div id="treeArea"></div>
+  <div id="explanation">Enter values to start.</div>
+
+  <div class="controls">
+    <button class="btn" id="prevBtn" disabled>Prev</button>
+    <button class="btn" id="nextBtn" disabled>Next</button>
+    <button class="btn" id="playBtn" disabled>Play</button>
+    <button class="btn" id="resetBtn" disabled>Reset</button>
+    <span id="stepIndicator" style="margin-left:10px;">Step: 0 / 0</span>
+  </div>
+</div>
+
+<script>
+let steps = [];
+let stepIndex = -1;
+let playTimer = null;
+let arr = [];
+let n = 0;
+
+const goBtn = document.getElementById("goBtn");
+const countInput = document.getElementById("count");
+const inputsBox = document.getElementById("inputsBox");
+const animateBtn = document.getElementById("animateBtn");
+const treeArea = document.getElementById("treeArea");
+const explanation = document.getElementById("explanation");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const playBtn = document.getElementById("playBtn");
+const resetBtn = document.getElementById("resetBtn");
+const stepIndicator = document.getElementById("stepIndicator");
+
+goBtn.addEventListener("click", () => {
+  n = parseInt(countInput.value);
+  if (!n || n <= 0) { alert("Enter valid count!"); return; }
+  inputsBox.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    inputsBox.innerHTML += `<input type="number" id="num${i}" placeholder="${i+1}">`;
+  }
+  animateBtn.style.display = "inline-block";
+});
+
+animateBtn.addEventListener("click", () => {
+  arr = [];
+  for (let i = 0; i < n; i++) {
+    const val = document.getElementById("num" + i).value;
+    if (val === "") { alert("Fill all boxes"); return; }
+    arr.push(Number(val));
+  }
+  steps = recordHeapSort(arr.slice());
+  stepIndex = -1;
+  renderTree(arr);
+  updateControls();
+  explanation.textContent = "HeapSort steps recorded. Click Next to start.";
+});
+
+function recordHeapSort(a) {
+  const steps = [];
+  const n = a.length;
+  let sorted = new Set();
+
+  function snapshot(type, i, j, desc) {
+    steps.push({
+      arr: a.slice(),
+      i, j, type, desc,
+      sorted: new Set(sorted)
+    });
+  }
+
+  function heapify(nLocal, i) {
+    let largest = i;
+    const left = 2*i + 1;
+    const right = 2*i + 2;
+
+    if (left < nLocal) {
+      snapshot("compare", i, left, `Compare arr[${i}] (${a[i]}) with left child arr[${left}] (${a[left]})`);
+      if (a[left] > a[largest]) largest = left;
+    }
+
+    if (right < nLocal) {
+      snapshot("compare", i, right, `Compare arr[${i}] (${a[i]}) with right child arr[${right}] (${a[right]})`);
+      if (a[right] > a[largest]) largest = right;
+    }
+
+    if (largest !== i) {
+      snapshot("swap", i, largest, `Swap arr[${i}] (${a[i]}) and arr[${largest}] (${a[largest]})`);
+      [a[i], a[largest]] = [a[largest], a[i]];
+      heapify(nLocal, largest);
+    }
+  }
+
+  for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+    snapshot("build", i, null, `Building heap from index ${i}`);
+    heapify(n, i);
+  }
+
+  for (let i = n - 1; i > 0; i--) {
+    snapshot("swap", 0, i, `Swap root (${a[0]}) with arr[${i}] (${a[i]})`);
+    [a[0], a[i]] = [a[i], a[0]];
+    sorted.add(i);
+    snapshot("sorted", i, null, `Element at index ${i} is sorted.`);
+    heapify(i, 0);
+  }
+
+  sorted.add(0);
+  snapshot("sorted", 0, null, `Element at index 0 is sorted.`);
+  return steps;
+}
+
+function renderTree(array, highlight = {}) {
+  treeArea.innerHTML = "";
+  const levels = Math.floor(Math.log2(array.length)) + 1;
+  let index = 0;
+
+  for (let lvl = 0; lvl < levels; lvl++) {
+    const count = Math.pow(2, lvl);
+    const row = document.createElement("div");
+    row.className = "tree-level";
+
+    const label = document.createElement("div");
+    label.className = "level-label";
+    label.textContent = `Level ${lvl + 1}:`;
+    row.appendChild(label);
+
+    for (let j = 0; j < count && index < array.length; j++) {
+      const node = document.createElement("div");
+      node.className = "node";
+      node.textContent = array[index];
+
+      if (highlight.type === "swap" && (index === highlight.i || index === highlight.j)) node.classList.add("swap");
+      if (highlight.type === "compare" && (index === highlight.i || index === highlight.j)) node.classList.add("compare");
+      if (highlight.sorted && highlight.sorted.has(index)) node.classList.add("sorted");
+
+      row.appendChild(node);
+      index++;
+    }
+    treeArea.appendChild(row);
+  }
+}
+
+function renderStep() {
+  if (stepIndex < 0) {
+    renderTree(steps[0].arr);
+    explanation.textContent = "Initial array (unsorted heap).";
+    stepIndicator.textContent = `Step: 0 / ${steps.length}`;
+    return;
+  }
+
+  const step = steps[stepIndex];
+  renderTree(step.arr, step);
+  explanation.textContent = step.desc;
+  stepIndicator.textContent = `Step: ${stepIndex + 1} / ${steps.length}`;
+}
+
+nextBtn.addEventListener("click", () => { stepIndex++; renderStep(); updateControls(); });
+prevBtn.addEventListener("click", () => { stepIndex--; renderStep(); updateControls(); });
+resetBtn.addEventListener("click", () => { stepIndex = -1; renderTree(arr); explanation.textContent = "Reset to initial array."; updateControls(); });
+
+playBtn.addEventListener("click", () => {
+  if (playTimer) stopPlay(); else startPlay();
+});
+
+function startPlay() {
+  playBtn.textContent = "Pause";
+  prevBtn.disabled = true;
+  nextBtn.disabled = true;
+  playTimer = setInterval(() => {
+    if (stepIndex < steps.length - 1) {
+      stepIndex++;
+      renderStep();
+    } else stopPlay();
+  }, 1000);
+}
+
+function stopPlay() {
+  clearInterval(playTimer);
+  playTimer = null;
+  playBtn.textContent = "Play";
+  updateControls();
+}
+
+function updateControls() {
+  const hasSteps = steps.length > 0;
+  prevBtn.disabled = !hasSteps || stepIndex <= 0;
+  nextBtn.disabled = !hasSteps || stepIndex >= steps.length - 1;
+  playBtn.disabled = !hasSteps;
+  resetBtn.disabled = !hasSteps;
+}
+</script>
+</body>
+</html>
